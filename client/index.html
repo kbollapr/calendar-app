@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar Booking App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        .slot {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: center;
+            cursor: pointer;
+        }
+        .slot.open {
+            background-color: #28a745;
+            color: white;
+        }
+        .slot.booked {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .slot.pending {
+            background-color: #ffc107;
+            color: black;
+        }
+        #adminPanel {
+            margin-top: 20px;
+            border-top: 2px solid #ccc;
+            padding-top: 20px;
+        }
+        button {
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        #submitBtn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Calendar Booking App</h1>
+    <h3>Select a Slot for July 13, 2025</h3>
+    <div id="calendar" class="calendar"></div>
+    <button id="submitBtn" disabled>Submit Booking</button>
+    <div id="adminPanel" style="display: none;">
+        <h3>Admin Panel</h3>
+        <button id="toggleAdmin">Toggle Admin View</button>
+        <div id="requests"></div>
+    </div>
+
+    <script>
+        // Initialize slots (9 AM to 5 PM)
+        const slots = [
+            { time: "9:00 AM", status: "open" },
+            { time: "10:00 AM", status: "open" },
+            { time: "11:00 AM", status: "booked" },
+            { time: "12:00 PM", status: "open" },
+            { time: "1:00 PM", status: "open" },
+            { time: "2:00 PM", status: "booked" },
+            { time: "3:00 PM", status: "open" },
+            { time: "4:00 PM", status: "open" },
+        ];
+
+        // Load or save slots to localStorage
+        const loadSlots = () => JSON.parse(localStorage.getItem("slots")) || slots;
+        const saveSlots = (slots) => localStorage.setItem("slots", JSON.stringify(slots));
+
+        // Load or save requests to localStorage
+        let requests = JSON.parse(localStorage.getItem("requests")) || [];
+
+        // Render calendar
+        function renderCalendar() {
+            const calendar = document.getElementById("calendar");
+            calendar.innerHTML = "";
+            const currentSlots = loadSlots();
+            currentSlots.forEach((slot, index) => {
+                const slotDiv = document.createElement("div");
+                slotDiv.className = `slot ${slot.status}`;
+                slotDiv.textContent = slot.time;
+                if (slot.status === "open") {
+                    slotDiv.addEventListener("click", () => selectSlot(index));
+                }
+                calendar.appendChild(slotDiv);
+            });
+        }
+
+        // Select a slot
+        let selectedSlot = null;
+        function selectSlot(index) {
+            selectedSlot = index;
+            document.querySelectorAll(".slot").forEach((slot, i) => {
+                slot.style.border = i === index && slots[index].status === "open" ? "2px solid blue" : "1px solid #ccc";
+            });
+            document.getElementById("submitBtn").disabled = false;
+        }
+
+        // Submit booking
+        document.getElementById("submitBtn").addEventListener("click", () => {
+            if (selectedSlot !== null) {
+                const currentSlots = loadSlots();
+                currentSlots[selectedSlot].status = "pending";
+                requests.push({ slot: selectedSlot, time: currentSlots[selectedSlot].time, status: "pending" });
+                saveSlots(currentSlots);
+                saveRequests();
+                alert(`Booking request for ${currentSlots[selectedSlot].time} submitted!`);
+                selectedSlot = null;
+                document.getElementById("submitBtn").disabled = true;
+                renderCalendar();
+                renderRequests();
+            }
+        });
+
+        // Save requests
+        const saveRequests = () => localStorage.setItem("requests", JSON.stringify(requests));
+
+        // Render admin requests
+        function renderRequests() {
+            const requestsDiv = document.getElementById("requests");
+            requestsDiv.innerHTML = "<h4>Booking Requests</h4>";
+            requests.forEach((req, index) => {
+                if (req.status === "pending") {
+                    const reqDiv = document.createElement("div");
+                    reqDiv.innerHTML = `
+                        ${req.time} 
+                        <button onclick="handleRequest(${index}, 'accept')">Accept</button>
+                        <button onclick="handleRequest(${index}, 'reject')">Reject</button>
+                    `;
+                    requestsDiv.appendChild(reqDiv);
+                }
+            });
+        }
+
+        // Handle admin actions
+        function handleRequest(index, action) {
+            const currentSlots = loadSlots();
+            if (action === "accept") {
+                currentSlots[requests[index].slot].status = "booked";
+                requests[index].status = "accepted";
+                alert(`Booking for ${requests[index].time} accepted!`);
+            } else {
+                currentSlots[requests[index].slot].status = "open";
+                requests[index].status = "rejected";
+                alert(`Booking for ${requests[index].time} rejected!`);
+            }
+            saveSlots(currentSlots);
+            saveRequests();
+            renderCalendar();
+            renderRequests();
+        }
+
+        // Toggle admin view
+        document.getElementById("toggleAdmin").addEventListener("click", () => {
+            const adminPanel = document.getElementById("adminPanel");
+            adminPanel.style.display = adminPanel.style.display === "none" ? "block" : "none";
+        });
+
+        // Initialize
+        saveSlots(slots); // Save initial slots
+        renderCalendar();
+        renderRequests();
+    </script>
+</body>
+</html>
